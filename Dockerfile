@@ -6,6 +6,8 @@ ARG CADDY_VERSION="latest"
 
 ENV CADDYPATH="/etc/caddy"
 ENV DOCKER_HOST="unix:///tmp/docker.sock"
+ENV GOPATH="/go"
+ENV GOBIN="/go/bin"
 
 # Install all dependencies:
 RUN apk update && apk upgrade \
@@ -21,8 +23,7 @@ RUN apk update && apk upgrade \
   && rm "docker-gen-alpine-linux-amd64-${DOCKER_GEN_VERSION}.tar.gz" \
   # Install xcaddy and build Caddy with plugins
   && go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest \
-  && export PATH="$(go env GOBIN):${PATH}" \
-  && xcaddy build ${CADDY_VERSION} \
+  && $(go env GOBIN)/xcaddy build ${CADDY_VERSION} \
     --with github.com/lucaslorentz/caddy-docker-proxy/v2 \
     --with github.com/greenpau/caddy-security \
     --with github.com/mholt/caddy-ratelimit \
