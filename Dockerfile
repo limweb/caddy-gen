@@ -22,7 +22,7 @@ RUN apk update && apk upgrade \
   && apk add --no-cache go make \
   # Install xcaddy and build Caddy with plugins
   && go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest \
-  && /go/bin/xcaddy build ${CADDY_VERSION} \
+  && /usr/local/go/bin/xcaddy build ${CADDY_VERSION} \
     --with github.com/lucaslorentz/caddy-docker-proxy/v2 \
     --with github.com/greenpau/caddy-security \
     --with github.com/mholt/caddy-ratelimit \
@@ -30,7 +30,7 @@ RUN apk update && apk upgrade \
   && chmod u+x /usr/bin/caddy \
   # Clean up Go and build tools
   && apk del go make \
-  && rm -rf /go /root/.cache /root/go
+  && rm -rf /go /root/.cache /root/go /usr/local/go
 
 EXPOSE 80 443 2015
 VOLUME /etc/caddy
