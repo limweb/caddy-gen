@@ -145,6 +145,7 @@
       {{ range $j, $net := $container.Networks }}
       {{ $port := or (trim (index $container.Labels "virtual.port")) "80" }}
       to {{ $net.IP }}:{{ $port }}
+      header_up Host {{ $host }}
       header_up Authorization {http.request.header.Authorization}
       header_up X-User-Sub {http.auth.claims.sub}
       header_up X-User-Email {http.auth.claims.email}
