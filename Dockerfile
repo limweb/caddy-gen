@@ -22,7 +22,7 @@ RUN apk update && apk upgrade \
   && apk add --no-cache go make \
   # Install xcaddy and build Caddy with plugins
   && go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest \
-  && $(go env GOPATH)/bin/xcaddy build ${CADDY_VERSION} \
+  && /go/bin/xcaddy build ${CADDY_VERSION} \
     --with github.com/lucaslorentz/caddy-docker-proxy/v2 \
     --with github.com/greenpau/caddy-security \
     --with github.com/mholt/caddy-ratelimit \
