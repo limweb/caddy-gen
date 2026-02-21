@@ -52,7 +52,42 @@
 {{ $jwtRole := trim (index $c.Labels "virtual.jwt.require_role") }}
 {{ $jwtEnabled := and (ne $jwtIssuer "") (ne $jwtJwks "") }}
 
-# Log level configuration
+# JWT Configuration from auth labels (simplified)
+{{ $authValidateJwt := trim (index $c.Labels "auth.validatejwt") }}
+{{ $authServer := trim (index $c.Labels "auth.server") }}
+{{ $authRealm := trim (index $c.Labels "auth.realm") }}
+{{ $authRoles := trim (index $c.Labels "auth.roles") }}
+{{ $authClientid := trim (index $c.Labels "auth.clientid") }}
+
+# Map auth.* to virtual.jwt.* if auth labels are present
+{{ if and (eq $jwtIssuer "") (ne $authServer "") }}
+{{ $jwtIssuer = print "https://" $authServer }}
+{{ end }}
+{{ if and (eq $jwtAudience "") (ne $authRealm "") }}
+{{ $jwtAudience = $authRealm }}
+{{ end }}
+{{ if and (eq $jwtJwks "") (ne $authServer "") }}
+{{ $jwtJwks = print "https://" $authServer "/.well-known/jwks.json" }}
+{{ end }}
+{{ if and (eq $jwtRole "") (ne $authRoles "") }}
+{{ $jwtRole = $authRoles }}
+{{ end }}
+
+# Enable JWT if auth.validatejwt=true and we have auth.server
+{{ if and (eq $jwtEnabled false) (eq $authValidateJwt "true") (ne $authServer "") }}
+{{ $jwtEnabled = true }}
+{{ end }}
+
+# Rate Limit Configuration
+{{ $rateLimitZone := trim (index $c.Labels "virtual.ratelimit.zone") }}
+{{ $rateLimitKey := or (trim (index $c.Labels "virtual.ratelimit.key")) "{http.request.remote_ip}" }}
+{{ $rateLimitEvents := or (trim (index $c.Labels "virtual.ratelimit.events")) "100" }}
+{{ $rateLimitWindow := or (trim (index $c.Labels "virtual.ratelimit.window")) "1m" }}
+{{ $rateLimitEnabled := ne $rateLimitZone "" }}
+# Debug Mode - ตั้งค่า log level สำหรับ debugging
+{{ $debugMode := trim (index $c.Labels "virtual.debug") }}
+{{ $isDebug := eq $debugMode "true" }}
+{{ if $isDebug }}{{ $logLevel = "DEBUG" }}{{ end }}
 {{ $logLevel := trim (index $c.Labels "virtual.log.level") }}
 {{ $logLevelSet := ne $logLevel "" }}
 {{ if not $logLevelSet }}{{ $logLevel = "ERROR" }}{{ end }}
@@ -65,7 +100,15 @@
 
 {{ if $tlsOff }}http://{{ end }}{{ $host }} {
   {{ if $tlsOn }}tls {{ $tlsEnv }}{{ end }}
-  
+
+  # ===== CONFIGURATION =====
+  # Host: {{ $host }}
+  {{ if $tlsOn }}# TLS Mode: {{ $tlsEnv }}{{ end }}
+  {{ if $jwtEnabled }}# JWT: Enabled ({{ $jwtIssuer }}){{ end }}
+  {{ if $rateLimitEnabled }}# Rate Limit: {{ $rateLimitZone }} ({{ $rateLimitEvents }}/{{ $rateLimitWindow }}){{ end }}
+  {{ if $jwtRole }}# Required Roles: {{ $jwtRole }}{{ end }}
+  {{ if $isDebug }}# DEBUG MODE: Enabled{{ end }}
+
   encode zstd gzip
   
   {{ if $tlsOn }}
@@ -97,6 +140,11 @@
 
   {{ $hostDirectives }}
   {{ if $hostImport }}import {{ $hostImport }}{{ end }}
+
+  # ===== HEALTH CHECK FOR LOAD BALANCER =====
+  handle /health {
+    respond "OK" 200
+  }
 
   # ===== BLOCK SENSITIVE FILES =====
   @blocked {
@@ -132,8 +180,30 @@
 
     # ===== ROLE CHECK =====
     {{ if $jwtRole }}
-    @forbidden not claim roles contains {{ $jwtRole }}
+    {{ $roles := split $jwtRole "," }}
+    {{ if ne $authClientid "" }}
+    # Keycloak: resource_access.{client_id}.roles
+    {{ range $i, $role := $roles }}
+    {{ if eq $i 0 }}@forbidden not (claim resource_access.{{ $authClientid }}.roles contains {{ trim $role }}){{ else }} and not (claim resource_access.{{ $authClientid }}.roles contains {{ trim $role }}){{ end }}
+    {{ end }}
+    {{ else }}
+    # Keycloak: realm_access.roles
+    {{ range $i, $role := $roles }}
+    {{ if eq $i 0 }}@forbidden not (claim realm_access.roles contains {{ trim $role }}){{ else }} and not (claim realm_access.roles contains {{ trim $role }}){{ end }}
+    {{ end }}
+    {{ end }}
     respond @forbidden 403
+    {{ end }}
+
+    # ===== RATE LIMIT =====
+    {{ if $rateLimitEnabled }}
+    rate_limit {
+      zone {{ $rateLimitZone }} {
+        key {{ $rateLimitKey }}
+        events {{ $rateLimitEvents }}
+        window {{ $rateLimitWindow }}
+      }
+    }
     {{ end }}
 
     # ===== FORWARD CLAIMS + REVERSE PROXY =====
@@ -162,6 +232,17 @@
       {{ $authUsername }} {{ $authPassword }}
   }
 
+  # ===== RATE LIMIT =====
+  {{ if $rateLimitEnabled }}
+  rate_limit {
+    zone {{ $rateLimitZone }} {
+      key {{ $rateLimitKey }}
+      events {{ $rateLimitEvents }}
+      window {{ $rateLimitWindow }}
+    }
+  }
+  {{ end }}
+
   reverse_proxy {{ $proxyMatcher }} {
     lb_policy {{ $proxyLBPolicy }}
     {{ $proxyDirectives }}
@@ -177,6 +258,17 @@
   }
   {{ else }}
   # ===== NO AUTH MODE =====
+  # ===== RATE LIMIT =====
+  {{ if $rateLimitEnabled }}
+  rate_limit {
+    zone {{ $rateLimitZone }} {
+      key {{ $rateLimitKey }}
+      events {{ $rateLimitEvents }}
+      window {{ $rateLimitWindow }}
+    }
+  }
+  {{ end }}
+
   reverse_proxy {{ $proxyMatcher }} {
     lb_policy {{ $proxyLBPolicy }}
     {{ $proxyDirectives }}

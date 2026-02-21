@@ -1,0 +1,41 @@
+version: "3.8"
+
+services:
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: api-service
+    image: caddy-gateway-api:latest
+    labels:
+      - "virtual.host=api.shopsthai.com"
+      - "virtual.port=3000"
+      - "virtual.tls=internal"
+      # - "virtual.tls-email=your@email.com"
+      # JWT Configuration - เพียง 3 ตัวนี้ template จะ map เอง
+      - "auth.validatejwt=true"
+      - "auth.server=sso.shopsthai.com"
+      - "auth.realm=shopthai.app"
+      # Keycloak Client ID (สำหรับ resource_access.{client_id}.roles)
+      - "auth.clientid=shopthai-api"
+      # Role check - ถ้า token ไม่มี role ใดๆ ที่ระบุ จะ return 403
+      - "auth.roles=admin,manager"
+      # - "auth.roles=admin" # Role เดียว
+      # - "auth.roles=admin,manager,ops" # 3 roles
+      # Rate Limit
+      - "virtual.ratelimit.zone=api_zone"
+      - "virtual.ratelimit.events=100"
+      - "virtual.ratelimit.window=1m"
+      # Debug Mode - ถ้าต้องการดู log รายละเอียด ให้เปิดบรรทัดนี้
+      - "virtual.debug=true"
+    env_file:
+      - ./api/.env
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Bangkok
+    networks:
+      - caddy-network
+
+networks:
+  caddy-network:
+    external: true
