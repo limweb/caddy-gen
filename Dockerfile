@@ -1,14 +1,15 @@
-FROM caddy:2.10.2-alpine
+FROM alpine:latest
 
 ARG DOCKER_GEN_VERSION="0.14.0"
 ARG FOREGO_VERSION="0.16.1"
+ARG CADDY_VERSION="latest"
 
 ENV CADDYPATH="/etc/caddy"
 ENV DOCKER_HOST="unix:///tmp/docker.sock"
 
-# Install all dependenices:
+# Install all dependencies:
 RUN apk update && apk upgrade \
-  && apk add --no-cache bash openssh-client git \
+  && apk add --no-cache bash openssh-client git go make \
   && apk add --no-cache --virtual .build-dependencies curl wget tar \
   # Install Forego
   && wget --quiet "https://github.com/jwilder/forego/releases/download/v${FOREGO_VERSION}/forego" \
@@ -18,6 +19,14 @@ RUN apk update && apk upgrade \
   && wget --quiet "https://github.com/nginx-proxy/docker-gen/releases/download/${DOCKER_GEN_VERSION}/docker-gen-alpine-linux-amd64-${DOCKER_GEN_VERSION}.tar.gz" \
   && tar -C /usr/bin -xvzf "docker-gen-alpine-linux-amd64-${DOCKER_GEN_VERSION}.tar.gz" \
   && rm "docker-gen-alpine-linux-amd64-${DOCKER_GEN_VERSION}.tar.gz" \
+  # Install xcaddy and build Caddy with plugins
+  && go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest \
+  && xcaddy build ${CADDY_VERSION} \
+    --with github.com/lucaslorentz/caddy-docker-proxy/v2 \
+    --with github.com/greenpau/caddy-security \
+    --with github.com/mholt/caddy-ratelimit \
+  && mv bin/caddy /usr/bin/caddy \
+  && chmod u+x /usr/bin/caddy \
   && apk del .build-dependencies
 
 EXPOSE 80 443 2015

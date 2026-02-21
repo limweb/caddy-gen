@@ -41,12 +41,28 @@
 
 {{ if $tlsOff }}http://{{ end }}{{ $host }} {
   {{ if $tlsOn }}tls {{ $tlsEnv }}{{ end }}
+  {{ if $tlsOn }}
+  # โหมด HTTPS → ลบ fingerprint + ใส่ HSTS
+  header {
+    -Server
+    -X-Powered-By
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    # ถ้ายังไม่มั่นใจ อย่าเพิ่ม preload
+    # Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+  }
+  {{ else }}
+  # โหมด HTTP ธรรมดา → ลบ fingerprint อย่างเดียว
+  header {
+    -Server
+    -X-Powered-By
+  }
+  {{ end }}
 
   {{ $hostDirectives }}
   {{ if $hostImport }}import {{ $hostImport }}{{ end }}
 
   {{ if $basicauth }}
-  basic_auth {{ $authPath }} {
+  basicauth {{ $authPath }} {
       {{ $authUsername }} {{ $authPassword }}
   }
   {{ end }}
@@ -59,6 +75,9 @@
     {{ range $j, $net := $container.Networks }}
     {{ $port := or (trim (index $container.Labels "virtual.port")) "80" }}
     to {{ $net.IP }}:{{ $port }}
+    header_up X-Real-IP {remote_host}
+    header_up X-Tlen-IP {remote_host}
+    header_up X-Forwarded-For {remote_host}
     {{ end }}
     {{ end }}
   }
@@ -72,3 +91,7 @@
 {{ end }}
 
 {{ end }}
+
+:2015
+
+metrics

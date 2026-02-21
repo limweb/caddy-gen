@@ -3,6 +3,8 @@ services:
   caddy-gen:
     container_name: caddy2-gen
     build: ..
+    platform: linux/amd64
+    image: limweb/caddy2-gen:latest
     restart: always
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
