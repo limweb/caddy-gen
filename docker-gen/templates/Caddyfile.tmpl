@@ -155,26 +155,28 @@
   {{ if $jwtEnabled }}
   # ===== JWT AUTH BLOCK =====
   route {
-    jwt {
-      primary yes
-      trusted_tokens {
-        static_secret {
-          token_name access_token
+    authentication {
+      provider jwt {
+        primary yes
+        trusted_tokens {
+          static_secret {
+            token_name access_token
+          }
         }
-      }
 
-      issuers {
-        oidc {
-          issuer {{ $jwtIssuer }}
-          metadata_url {{ $jwtIssuer }}/.well-known/openid-configuration
-          audience {{ $jwtAudience }}
+        issuers {
+          oidc {
+            issuer {{ $jwtIssuer }}
+            metadata_url {{ $jwtIssuer }}/.well-known/openid-configuration
+            audience {{ $jwtAudience }}
+          }
         }
-      }
 
-      validate {
-        exp
-        nbf
-        iat
+        validate {
+          exp
+          nbf
+          iat
+        }
       }
     }
 

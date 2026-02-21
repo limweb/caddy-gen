@@ -26,8 +26,9 @@ RUN apk update && apk upgrade \
   && go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest \
   && $(go env GOBIN)/xcaddy build ${CADDY_VERSION} \
     --with github.com/lucaslorentz/caddy-docker-proxy/v2 \
-    --with github.com/greenpau/caddy-security \
     --with github.com/mholt/caddy-ratelimit \
+    --with github.com/caddyserver/caddy/v2/modules/caddyhttp/headers \
+    --with github.com/caddyserver/caddy/v2/modules/caddyhttp/authentication \
   && mv caddy /usr/bin/caddy \
   && chmod u+x /usr/bin/caddy \
   # Clean up Go and build tools
