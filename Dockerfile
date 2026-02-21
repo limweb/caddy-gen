@@ -39,6 +39,7 @@ VOLUME /etc/caddy
 
 # Copy only necessary files
 COPY ./docker-gen/templates/Caddyfile.tmpl /code/docker-gen/templates/Caddyfile.tmpl
+COPY ./docker-gen/templates/Caddyfile.tmpl /code/docker-gen/templates/Caddyfile.bkp
 COPY docker-entrypoint.sh /code/docker-entrypoint.sh
 WORKDIR /code
 
