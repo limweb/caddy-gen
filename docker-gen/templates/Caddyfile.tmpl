@@ -156,62 +156,59 @@
 
   {{ if $jwtEnabled }}
   # ===== JWT AUTH BLOCK =====
-  route {
-    jwtauth {
-      jwk_url {{ $jwtJwks }}
-      issuer_whitelist {{ $jwtIssuer }}
-      audience_whitelist {{ $jwtAudience }}
-      from_header Authorization
-      user_claims sub email roles
-    }
+  jwt {
+    jwk_url {{ $jwtJwks }}
+    issuer {{ $jwtIssuer }}
+    audience {{ $jwtAudience }}
+    from_header Authorization
+  }
 
-    # ===== ROLE CHECK =====
-    {{ if $jwtRole }}
-    {{ $roles := split $jwtRole "," }}
-    {{ if ne $authClientid "" }}
-    # Keycloak: resource_access.{client_id}.roles
-    {{ range $i, $role := $roles }}
-    {{ if eq $i 0 }}@forbidden not (user resource_access.{{ $authClientid }}.roles contains {{ trim $role }}){{ else }} and not (user resource_access.{{ $authClientid }}.roles contains {{ trim $role }}){{ end }}
-    {{ end }}
-    {{ else }}
-    # Keycloak: realm_access.roles
-    {{ range $i, $role := $roles }}
-    {{ if eq $i 0 }}@forbidden not (user realm_access.roles contains {{ trim $role }}){{ else }} and not (user realm_access.roles contains {{ trim $role }}){{ end }}
-    {{ end }}
-    {{ end }}
-    respond @forbidden 403
-    {{ end }}
+  # ===== ROLE CHECK =====
+  {{ if $jwtRole }}
+  {{ $roles := split $jwtRole "," }}
+  {{ if ne $authClientid "" }}
+  # Keycloak: resource_access.{client_id}.roles
+  {{ range $i, $role := $roles }}
+  {{ if eq $i 0 }}@forbidden not expr {jwt.resource_access.{{ $authClientid }}.roles} contains {{ trim $role }}{{ else }} and not expr {jwt.resource_access.{{ $authClientid }}.roles} contains {{ trim $role }}{{ end }}
+  {{ end }}
+  {{ else }}
+  # Keycloak: realm_access.roles
+  {{ range $i, $role := $roles }}
+  {{ if eq $i 0 }}@forbidden not expr {jwt.realm_access.roles} contains {{ trim $role }}{{ else }} and not expr {jwt.realm_access.roles} contains {{ trim $role }}{{ end }}
+  {{ end }}
+  {{ end }}
+  respond @forbidden 403
+  {{ end }}
 
-    # ===== RATE LIMIT =====
-    {{ if $rateLimitEnabled }}
-    rate_limit {
-      zone {{ $rateLimitZone }} {
-        key {{ $rateLimitKey }}
-        events {{ $rateLimitEvents }}
-        window {{ $rateLimitWindow }}
-      }
+  # ===== RATE LIMIT =====
+  {{ if $rateLimitEnabled }}
+  rate_limit {
+    zone {{ $rateLimitZone }} {
+      key {{ $rateLimitKey }}
+      events {{ $rateLimitEvents }}
+      window {{ $rateLimitWindow }}
     }
-    {{ end }}
+  }
+  {{ end }}
 
-    # ===== FORWARD CLAIMS + REVERSE PROXY =====
-    reverse_proxy {{ $proxyMatcher }} {
-      lb_policy {{ $proxyLBPolicy }}
-      {{ $proxyDirectives }}
-      {{ if $proxyImport }}import {{ $proxyImport }}{{ end }}
-      {{ range $i, $container := $containers }}
-      {{ range $j, $net := $container.Networks }}
-      {{ $port := or (trim (index $container.Labels "virtual.port")) "80" }}
-      to {{ $net.IP }}:{{ $port }}
-      header_up Host {{ $host }}
-      header_up Authorization {http.request.header.Authorization}
-      header_up X-User-Sub {http.auth.user.sub}
-      header_up X-User-Email {http.auth.user.email}
-      header_up X-User-Roles {http.auth.user.roles}
-      header_up X-Real-IP {remote_host}
-      header_up X-Tlen-IP {remote_host}
-      {{ end }}
-      {{ end }}
-    }
+  # ===== FORWARD CLAIMS + REVERSE PROXY =====
+  reverse_proxy {{ $proxyMatcher }} {
+    lb_policy {{ $proxyLBPolicy }}
+    {{ $proxyDirectives }}
+    {{ if $proxyImport }}import {{ $proxyImport }}{{ end }}
+    {{ range $i, $container := $containers }}
+    {{ range $j, $net := $container.Networks }}
+    {{ $port := or (trim (index $container.Labels "virtual.port")) "80" }}
+    to {{ $net.IP }}:{{ $port }}
+    header_up Host {{ $host }}
+    header_up Authorization {http.request.header.Authorization}
+    header_up X-User-Sub {jwt.sub}
+    header_up X-User-Email {jwt.email}
+    header_up X-User-Roles {jwt.realm_access.roles}
+    header_up X-Real-IP {remote_host}
+    header_up X-Tlen-IP {remote_host}
+    {{ end }}
+    {{ end }}
   }
   {{ else if $basicauth }}
   # ===== BASIC AUTH BLOCK =====
