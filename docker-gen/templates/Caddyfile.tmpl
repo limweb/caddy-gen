@@ -3,7 +3,7 @@
 	auto_https disable_redirects
 	log {
 		format json
-		level INFO
+		level ERROR
 	}
 
 	servers {
@@ -51,6 +51,11 @@
 {{ $jwtJwks := trim (index $c.Labels "virtual.jwt.jwks_uri") }}
 {{ $jwtRole := trim (index $c.Labels "virtual.jwt.require_role") }}
 {{ $jwtEnabled := and (ne $jwtIssuer "") (ne $jwtJwks "") }}
+
+# Log level configuration
+{{ $logLevel := trim (index $c.Labels "virtual.log.level") }}
+{{ $logLevelSet := ne $logLevel "" }}
+{{ if not $logLevelSet }}{{ $logLevel = "ERROR" }}{{ end }}
 
 {{ if $aliasPresent  }}
 {{ if $tlsOff }}http://{{ end }}{{ $alias }} {
@@ -154,7 +159,6 @@
     to {{ $net.IP }}:{{ $port }}
     header_up X-Real-IP {remote_host}
     header_up X-Tlen-IP {remote_host}
-    header_up X-Forwarded-For {remote_host}
     {{ end }}
     {{ end }}
   }
@@ -170,7 +174,6 @@
     to {{ $net.IP }}:{{ $port }}
     header_up X-Real-IP {remote_host}
     header_up X-Tlen-IP {remote_host}
-    header_up X-Forwarded-For {remote_host}
     {{ end }}
     {{ end }}
   }
@@ -178,6 +181,7 @@
 
   log {
     output stdout
+    level {{ $logLevel }}
   }
 }
 {{ end }}
