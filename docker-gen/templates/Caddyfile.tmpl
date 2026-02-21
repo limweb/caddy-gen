@@ -9,6 +9,8 @@
 	servers {
 		trusted_proxies static 0.0.0.0/0
 	}
+
+	order jwtauth before basicauth
 }
 
 {{ $hosts := groupByLabel $ "virtual.host" }}
@@ -155,29 +157,12 @@
   {{ if $jwtEnabled }}
   # ===== JWT AUTH BLOCK =====
   route {
-    authentication {
-      provider jwt {
-        primary yes
-        trusted_tokens {
-          static_secret {
-            token_name access_token
-          }
-        }
-
-        issuers {
-          oidc {
-            issuer {{ $jwtIssuer }}
-            metadata_url {{ $jwtIssuer }}/.well-known/openid-configuration
-            audience {{ $jwtAudience }}
-          }
-        }
-
-        validate {
-          exp
-          nbf
-          iat
-        }
-      }
+    jwtauth {
+      jwk_url {{ $jwtJwks }}
+      issuer_whitelist {{ $jwtIssuer }}
+      audience_whitelist {{ $jwtAudience }}
+      from_header Authorization
+      user_claims sub email roles
     }
 
     # ===== ROLE CHECK =====
@@ -186,12 +171,12 @@
     {{ if ne $authClientid "" }}
     # Keycloak: resource_access.{client_id}.roles
     {{ range $i, $role := $roles }}
-    {{ if eq $i 0 }}@forbidden not (claim resource_access.{{ $authClientid }}.roles contains {{ trim $role }}){{ else }} and not (claim resource_access.{{ $authClientid }}.roles contains {{ trim $role }}){{ end }}
+    {{ if eq $i 0 }}@forbidden not (user resource_access.{{ $authClientid }}.roles contains {{ trim $role }}){{ else }} and not (user resource_access.{{ $authClientid }}.roles contains {{ trim $role }}){{ end }}
     {{ end }}
     {{ else }}
     # Keycloak: realm_access.roles
     {{ range $i, $role := $roles }}
-    {{ if eq $i 0 }}@forbidden not (claim realm_access.roles contains {{ trim $role }}){{ else }} and not (claim realm_access.roles contains {{ trim $role }}){{ end }}
+    {{ if eq $i 0 }}@forbidden not (user realm_access.roles contains {{ trim $role }}){{ else }} and not (user realm_access.roles contains {{ trim $role }}){{ end }}
     {{ end }}
     {{ end }}
     respond @forbidden 403
@@ -219,9 +204,9 @@
       to {{ $net.IP }}:{{ $port }}
       header_up Host {{ $host }}
       header_up Authorization {http.request.header.Authorization}
-      header_up X-User-Sub {http.auth.claims.sub}
-      header_up X-User-Email {http.auth.claims.email}
-      header_up X-User-Roles {http.auth.claims.roles}
+      header_up X-User-Sub {http.auth.user.sub}
+      header_up X-User-Email {http.auth.user.email}
+      header_up X-User-Roles {http.auth.user.roles}
       header_up X-Real-IP {remote_host}
       header_up X-Tlen-IP {remote_host}
       {{ end }}
