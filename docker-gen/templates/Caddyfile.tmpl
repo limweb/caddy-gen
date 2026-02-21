@@ -73,24 +73,36 @@
   header {
     -Server
     -X-Powered-By
+    -Link
     Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    X-XSS-Protection "1; mode=block"
     X-Content-Type-Options "nosniff"
-    X-Frame-Options "DENY"
-    Referrer-Policy "strict-origin-when-cross-origin"
+    X-Frame-Options "SAMEORIGIN"
+    Referrer-Policy "same-origin"
+    Permissions-Policy "geolocation=()"
   }
   {{ else }}
   # โหมด HTTP ธรรมดา → ลบ fingerprint อย่างเดียว
   header {
     -Server
     -X-Powered-By
+    -Link
+    X-XSS-Protection "1; mode=block"
     X-Content-Type-Options "nosniff"
-    X-Frame-Options "DENY"
-    Referrer-Policy "strict-origin-when-cross-origin"
+    X-Frame-Options "SAMEORIGIN"
+    Referrer-Policy "same-origin"
+    Permissions-Policy "geolocation=()"
   }
   {{ end }}
 
   {{ $hostDirectives }}
   {{ if $hostImport }}import {{ $hostImport }}{{ end }}
+
+  # ===== BLOCK SENSITIVE FILES =====
+  @blocked {
+    path *.md *.mdown .htaccess .git .gitignore .env /.git*  /.git/* /configs/* /vendor/* /config/* /cronjob/*
+  }
+  respond @blocked 403
 
   {{ if $jwtEnabled }}
   # ===== JWT AUTH BLOCK =====
