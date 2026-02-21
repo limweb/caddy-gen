@@ -129,8 +129,6 @@
       lb_policy {{ $proxyLBPolicy }}
       {{ $proxyDirectives }}
       {{ if $proxyImport }}import {{ $proxyImport }}{{ end }}
-      transport http {
-      }
       {{ range $i, $container := $containers }}
       {{ range $j, $net := $container.Networks }}
       {{ $port := or (trim (index $container.Labels "virtual.port")) "80" }}
@@ -155,8 +153,6 @@
     lb_policy {{ $proxyLBPolicy }}
     {{ $proxyDirectives }}
     {{ if $proxyImport }}import {{ $proxyImport }}{{ end }}
-    transport http {
-    }
     {{ range $i, $container := $containers }}
     {{ range $j, $net := $container.Networks }}
     {{ $port := or (trim (index $container.Labels "virtual.port")) "80" }}
@@ -172,8 +168,6 @@
     lb_policy {{ $proxyLBPolicy }}
     {{ $proxyDirectives }}
     {{ if $proxyImport }}import {{ $proxyImport }}{{ end }}
-    transport http {
-    }
     {{ range $i, $container := $containers }}
     {{ range $j, $net := $container.Networks }}
     {{ $port := or (trim (index $container.Labels "virtual.port")) "80" }}
