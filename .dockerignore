@@ -14,7 +14,9 @@ AGENT.md
 .dockerignore
 Dockerfile*
 docker-compose.yml
-
+.github
+.windsurf
+.example
 # Node modules (if any)
 node_modules
 npm-debug.log*
