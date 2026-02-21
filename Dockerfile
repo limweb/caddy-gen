@@ -27,7 +27,7 @@ RUN apk update && apk upgrade \
     --with github.com/lucaslorentz/caddy-docker-proxy/v2 \
     --with github.com/greenpau/caddy-security \
     --with github.com/mholt/caddy-ratelimit \
-  && mv bin/caddy /usr/bin/caddy \
+  && mv caddy /usr/bin/caddy \
   && chmod u+x /usr/bin/caddy \
   && apk del .build-dependencies
 
