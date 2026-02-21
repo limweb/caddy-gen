@@ -159,27 +159,20 @@
   jwtauth {
     jwk_url {{ $jwtJwks }}
     issuer_whitelist {{ $jwtIssuer }}
-    audience_whitelist {{ $jwtAudience }}
+    {{ if $jwtAudience }}audience_whitelist {{ $jwtAudience }}{{ end }}
     from_header Authorization
-    user_claims sub email roles
+    user_claims sub email
+    {{ if $jwtRole }}
+    {{ if ne $authClientid "" }}
+    meta_claims "resource_access.{{ $authClientid }}.roles->roles"
+    {{ else }}
+    meta_claims "realm_access.roles->roles"
+    {{ end }}
+    {{ end }}
   }
 
-  # ===== ROLE CHECK =====
-  {{ if $jwtRole }}
-  {{ $roles := split $jwtRole "," }}
-  {{ if ne $authClientid "" }}
-  # Keycloak: resource_access.{client_id}.roles
-  {{ range $i, $role := $roles }}
-  {{ if eq $i 0 }}@forbidden not (user resource_access.{{ $authClientid }}.roles contains {{ trim $role }}){{ else }} and not (user resource_access.{{ $authClientid }}.roles contains {{ trim $role }}){{ end }}
-  {{ end }}
-  {{ else }}
-  # Keycloak: realm_access.roles
-  {{ range $i, $role := $roles }}
-  {{ if eq $i 0 }}@forbidden not (user realm_access.roles contains {{ trim $role }}){{ else }} and not (user realm_access.roles contains {{ trim $role }}){{ end }}
-  {{ end }}
-  {{ end }}
-  respond @forbidden 403
-  {{ end }}
+  # ===== ROLE CHECK (API-side) =====
+  # Role check is enforced by the backend API via X-User-Roles header
 
   # ===== RATE LIMIT =====
   {{ if $rateLimitEnabled }}
