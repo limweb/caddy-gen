@@ -156,11 +156,13 @@
 
   {{ if $jwtEnabled }}
   # ===== JWT AUTH BLOCK =====
-  jwt {
-    jwk_url {{ $jwtJwks }}
-    issuer {{ $jwtIssuer }}
-    audience {{ $jwtAudience }}
-    from_header Authorization
+  security {
+    jwt auth {
+      jwk_url {{ $jwtJwks }}
+      issuer {{ $jwtIssuer }}
+      audience {{ $jwtAudience }}
+      from_header Authorization
+    }
   }
 
   # ===== ROLE CHECK =====
@@ -169,12 +171,12 @@
   {{ if ne $authClientid "" }}
   # Keycloak: resource_access.{client_id}.roles
   {{ range $i, $role := $roles }}
-  {{ if eq $i 0 }}@forbidden not expr {jwt.resource_access.{{ $authClientid }}.roles} contains {{ trim $role }}{{ else }} and not expr {jwt.resource_access.{{ $authClientid }}.roles} contains {{ trim $role }}{{ end }}
+  {{ if eq $i 0 }}@forbidden not expr {security.jwt.resource_access.{{ $authClientid }}.roles} contains {{ trim $role }}{{ else }} and not expr {security.jwt.resource_access.{{ $authClientid }}.roles} contains {{ trim $role }}{{ end }}
   {{ end }}
   {{ else }}
   # Keycloak: realm_access.roles
   {{ range $i, $role := $roles }}
-  {{ if eq $i 0 }}@forbidden not expr {jwt.realm_access.roles} contains {{ trim $role }}{{ else }} and not expr {jwt.realm_access.roles} contains {{ trim $role }}{{ end }}
+  {{ if eq $i 0 }}@forbidden not expr {security.jwt.realm_access.roles} contains {{ trim $role }}{{ else }} and not expr {security.jwt.realm_access.roles} contains {{ trim $role }}{{ end }}
   {{ end }}
   {{ end }}
   respond @forbidden 403
@@ -202,9 +204,9 @@
     to {{ $net.IP }}:{{ $port }}
     header_up Host {{ $host }}
     header_up Authorization {http.request.header.Authorization}
-    header_up X-User-Sub {jwt.sub}
-    header_up X-User-Email {jwt.email}
-    header_up X-User-Roles {jwt.realm_access.roles}
+    header_up X-User-Sub {security.jwt.sub}
+    header_up X-User-Email {security.jwt.email}
+    header_up X-User-Roles {security.jwt.realm_access.roles}
     header_up X-Real-IP {remote_host}
     header_up X-Tlen-IP {remote_host}
     {{ end }}
