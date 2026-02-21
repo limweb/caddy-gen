@@ -89,10 +89,10 @@
 # Debug Mode - ตั้งค่า log level สำหรับ debugging
 {{ $debugMode := trim (index $c.Labels "virtual.debug") }}
 {{ $isDebug := eq $debugMode "true" }}
+{{ if $isDebug }}{{ $logLevel = "DEBUG" }}{{ end }}
 {{ $logLevel := trim (index $c.Labels "virtual.log.level") }}
 {{ $logLevelSet := ne $logLevel "" }}
 {{ if not $logLevelSet }}{{ $logLevel = "ERROR" }}{{ end }}
-{{ if $isDebug }}{{ $logLevel = "DEBUG" }}{{ end }}
 
 {{ if $aliasPresent  }}
 {{ if $tlsOff }}http://{{ end }}{{ $alias }} {
