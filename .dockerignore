@@ -1,4 +1,53 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+CHANGELOG.md
+LICENSE
+AGENT.md
 *.md
-.*
-Dockerfile
+
+# Docker
+.dockerignore
+Dockerfile*
 docker-compose.yml
+
+# Node modules (if any)
+node_modules
+npm-debug.log*
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs
+
+# Temporary files
+tmp
+temp
+.tmp
+
+# Build artifacts
+dist
+build
+target
+
+# Test coverage
+coverage
+.nyc_output
+
+# Environment files
+.env
+.env.*
+!.env.example
