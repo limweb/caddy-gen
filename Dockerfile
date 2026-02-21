@@ -38,6 +38,7 @@ EXPOSE 80 443 2015
 VOLUME /etc/caddy
 
 # Copy only necessary files
+RUN mkdir -p /code/docker-gen/templates
 COPY ./docker-gen/templates/Caddyfile.tmpl /code/docker-gen/templates/Caddyfile.tmpl
 COPY ./docker-gen/templates/Caddyfile.tmpl /code/docker-gen/templates/Caddyfile.bkp
 COPY docker-entrypoint.sh /code/docker-entrypoint.sh
