@@ -1,3 +1,17 @@
+{
+	# Global Options
+	email {$CADDY_TLS_EMAIL}
+	auto_https enable_redirects
+	log {
+		format json
+		level INFO
+	}
+
+	servers {
+		trusted_proxies static 0.0.0.0/0
+	}
+}
+
 {{ $hosts := groupByLabel $ "virtual.host" }}
 
 {{ if not $hosts }}
@@ -7,7 +21,6 @@
       output stdout
   }
 }
-
 
 {{ else }}
 
@@ -33,6 +46,13 @@
 {{ $proxyLBPolicy := or (trim (index $c.Labels "virtual.proxy.lb_policy")) "round_robin" }}
 {{ $proxyImport := trim (index $c.Labels "virtual.proxy.import") }}
 
+# JWT Configuration from virtual labels
+{{ $jwtIssuer := trim (index $c.Labels "virtual.jwt.issuer") }}
+{{ $jwtAudience := trim (index $c.Labels "virtual.jwt.audience") }}
+{{ $jwtJwks := trim (index $c.Labels "virtual.jwt.jwks_uri") }}
+{{ $jwtRole := trim (index $c.Labels "virtual.jwt.require_role") }}
+{{ $jwtEnabled := and (ne $jwtIssuer "") (ne $jwtJwks "") }}
+
 {{ if $aliasPresent  }}
 {{ if $tlsOff }}http://{{ end }}{{ $alias }} {
   redir {{ if $tlsOff }}http://{{ else }}https://{{ end }}{{ $host }}
@@ -41,31 +61,90 @@
 
 {{ if $tlsOff }}http://{{ end }}{{ $host }} {
   {{ if $tlsOn }}tls {{ $tlsEnv }}{{ end }}
+  
+  encode zstd gzip
+  
   {{ if $tlsOn }}
   # โหมด HTTPS → ลบ fingerprint + ใส่ HSTS
   header {
     -Server
     -X-Powered-By
-    Strict-Transport-Security "max-age=31536000; includeSubDomains"
-    # ถ้ายังไม่มั่นใจ อย่าเพิ่ม preload
-    # Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "DENY"
+    Referrer-Policy "strict-origin-when-cross-origin"
   }
   {{ else }}
   # โหมด HTTP ธรรมดา → ลบ fingerprint อย่างเดียว
   header {
     -Server
     -X-Powered-By
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "DENY"
+    Referrer-Policy "strict-origin-when-cross-origin"
   }
   {{ end }}
 
   {{ $hostDirectives }}
   {{ if $hostImport }}import {{ $hostImport }}{{ end }}
 
-  {{ if $basicauth }}
+  {{ if $jwtEnabled }}
+  # ===== JWT AUTH BLOCK =====
+  route {
+    jwt {
+      primary yes
+      trusted_tokens {
+        static_secret {
+          token_name access_token
+        }
+      }
+
+      issuers {
+        oidc {
+          issuer {{ $jwtIssuer }}
+          metadata_url {{ $jwtIssuer }}/.well-known/openid-configuration
+          audience {{ $jwtAudience }}
+        }
+      }
+
+      validate {
+        exp
+        nbf
+        iat
+      }
+    }
+
+    # ===== ROLE CHECK =====
+    {{ if $jwtRole }}
+    @forbidden not claim roles contains {{ $jwtRole }}
+    respond @forbidden 403
+    {{ end }}
+
+    # ===== FORWARD CLAIMS + REVERSE PROXY =====
+    reverse_proxy {{ $proxyMatcher }} {
+      lb_policy {{ $proxyLBPolicy }}
+      {{ $proxyDirectives }}
+      {{ if $proxyImport }}import {{ $proxyImport }}{{ end }}
+      {{ range $i, $container := $containers }}
+      {{ range $j, $net := $container.Networks }}
+      {{ $port := or (trim (index $container.Labels "virtual.port")) "80" }}
+      to {{ $net.IP }}:{{ $port }}
+      header_up Authorization {http.request.header.Authorization}
+      header_up X-User-Sub {http.auth.claims.sub}
+      header_up X-User-Email {http.auth.claims.email}
+      header_up X-User-Roles {http.auth.claims.roles}
+      header_up X-Real-IP {remote_host}
+      header_up X-Tlen-IP {remote_host}
+      header_up X-Forwarded-For {remote_host}
+      {{ end }}
+      {{ end }}
+    }
+  }
+  {{ else if $basicauth }}
+  # ===== BASIC AUTH BLOCK =====
   basicauth {{ $authPath }} {
       {{ $authUsername }} {{ $authPassword }}
   }
-  {{ end }}
 
   reverse_proxy {{ $proxyMatcher }} {
     lb_policy {{ $proxyLBPolicy }}
@@ -81,8 +160,24 @@
     {{ end }}
     {{ end }}
   }
+  {{ else }}
+  # ===== NO AUTH MODE =====
+  reverse_proxy {{ $proxyMatcher }} {
+    lb_policy {{ $proxyLBPolicy }}
+    {{ $proxyDirectives }}
+    {{ if $proxyImport }}import {{ $proxyImport }}{{ end }}
+    {{ range $i, $container := $containers }}
+    {{ range $j, $net := $container.Networks }}
+    {{ $port := or (trim (index $container.Labels "virtual.port")) "80" }}
+    to {{ $net.IP }}:{{ $port }}
+    header_up X-Real-IP {remote_host}
+    header_up X-Tlen-IP {remote_host}
+    header_up X-Forwarded-For {remote_host}
+    {{ end }}
+    {{ end }}
+  }
+  {{ end }}
 
-  encode zstd gzip
   log {
     output stdout
   }
