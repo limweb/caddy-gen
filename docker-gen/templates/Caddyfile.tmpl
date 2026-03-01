@@ -69,7 +69,7 @@
 {{ $jwtAudience = $authRealm }}
 {{ end }}
 {{ if and (eq $jwtJwks "") (ne $authServer "") }}
-{{ $jwtJwks = print "https://" $authServer "/.well-known/jwks.json" }}
+{{ $jwtJwks = print "https://" $authServer "/realms/" $authRealm "/protocol/openid-connect/certs" }}
 {{ end }}
 {{ if and (eq $jwtRole "") (ne $authRoles "") }}
 {{ $jwtRole = $authRoles }}
@@ -169,6 +169,8 @@
     meta_claims "realm_access.roles->roles"
     {{ end }}
     {{ end }}
+    # Cache JWKS for 5 minutes to handle key rotation
+    cache_duration 5m
   }
 
   # ===== ROLE CHECK (API-side) =====

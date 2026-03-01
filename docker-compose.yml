@@ -16,6 +16,8 @@ services:
       - "auth.validatejwt=true"
       - "auth.server=sso.shopsthai.com"
       - "auth.realm=shopthai.app"
+      # ใช้ JWKS URL ตรง ๆ เพราะ Keycloak ใช้ path พิเศษ
+      - "virtual.jwt.jwks_uri=https://sso.shopsthai.com/realms/shopsthai.app/protocol/openid-connect/certs"
       # Keycloak Client ID (สำหรับ resource_access.{client_id}.roles)
       - "auth.clientid=shopthai-api"
       # Role check - ถ้า token ไม่มี role ใดๆ ที่ระบุ จะ return 403
