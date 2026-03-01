@@ -33,10 +33,7 @@ RUN apk update && apk upgrade \
   && chmod u+x /usr/bin/caddy \
   # Clean up Go and build tools
   && apk del go make \
-  && rm -rf /go /root/.cache /root/go \
-  # Increase UDP buffer size for QUIC
-  && sysctl -w net.core.rmem_max=25000000 \
-  && sysctl -w net.core.rmem_default=25000000
+  && rm -rf /go /root/.cache /root/go
 
 EXPOSE 80 443 2015
 VOLUME /etc/caddy
