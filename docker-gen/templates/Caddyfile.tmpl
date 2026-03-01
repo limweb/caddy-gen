@@ -63,7 +63,7 @@
 
 # Map auth.* to virtual.jwt.* if auth labels are present
 {{ if and (eq $jwtIssuer "") (ne $authServer "") }}
-{{ $jwtIssuer = print "https://" $authServer }}
+{{ $jwtIssuer = print "https://" $authServer "/realms/" $authRealm }}
 {{ end }}
 {{ if and (eq $jwtAudience "") (ne $authRealm "") }}
 {{ $jwtAudience = $authRealm }}
