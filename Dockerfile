@@ -12,6 +12,7 @@ ENV GOBIN="/go/bin"
 # Install minimal dependencies
 RUN apk update && apk upgrade \
   && apk add --no-cache bash curl wget tar git \
+    nss-tools ca-certificates \
   # Install Forego
   && wget --quiet "https://github.com/jwilder/forego/releases/download/v${FOREGO_VERSION}/forego" \
   && mv ./forego /usr/bin/forego \
