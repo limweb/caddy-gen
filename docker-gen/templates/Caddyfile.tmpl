@@ -113,27 +113,6 @@
 
   encode zstd gzip
   
-  # ===== CORS CONFIGURATION =====
-  @cors_preflight method OPTIONS
-  handle @cors_preflight {
-    header {
-      Access-Control-Allow-Origin "*"
-      Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-      Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-      Access-Control-Max-Age "86400"
-      Access-Control-Allow-Credentials "true"
-    }
-    respond "" 204
-  }
-  
-  header {
-    Access-Control-Allow-Origin "*"
-    Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-    Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-    Access-Control-Expose-Headers "X-User-Sub, X-User-Email, X-User-Roles"
-    Access-Control-Allow-Credentials "true"
-  }
-  
   {{ if $tlsOn }}
   # โหมด HTTPS → ลบ fingerprint + ใส่ HSTS
   header {
@@ -218,6 +197,19 @@
   {{ end }}
 
   # ===== FORWARD CLAIMS + REVERSE PROXY =====
+  # ===== CORS CONFIGURATION (MOVED HERE TO HANDLE AFTER AUTH) =====
+  @cors_preflight method OPTIONS
+  handle @cors_preflight {
+    header {
+      Access-Control-Allow-Origin "*"
+      Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+      Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+      Access-Control-Max-Age "86400"
+      Access-Control-Allow-Credentials "true"
+    }
+    respond "" 204
+  }
+  
   reverse_proxy {{ $proxyMatcher }} {
     lb_policy {{ $proxyLBPolicy }}
     {{ $proxyDirectives }}
@@ -233,6 +225,12 @@
     header_up X-User-Roles {http.auth.user.roles}
     header_up X-Real-IP {remote_host}
     header_up X-Tlen-IP {remote_host}
+    # Add CORS headers to backend response
+    header_down Access-Control-Allow-Origin "*"
+    header_down Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    header_down Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+    header_down Access-Control-Expose-Headers "X-User-Sub, X-User-Email, X-User-Roles"
+    header_down Access-Control-Allow-Credentials "true"
     {{ end }}
     {{ end }}
   }
