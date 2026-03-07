@@ -115,6 +115,7 @@
   {{ $corsEnabled := trim (index $c.Labels "virtual.cors.enabled") }}
   {{ $isCorsEnabled := eq $corsEnabled "true" }}
   # DEBUG: corsEnabled = [{{ $corsEnabled }}], isCorsEnabled = [{{ $isCorsEnabled }}]
+  # DEBUG: All labels = [{{ range $k, $v := $c.Labels }}{{ $k }}={{ $v }} {{ end }}]
   {{ if $isCorsEnabled }}# CORS: Enabled{{ end }}
 
   encode zstd gzip
