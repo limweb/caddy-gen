@@ -8,11 +8,14 @@ ENV CADDYPATH="/etc/caddy"
 ENV DOCKER_HOST="unix:///tmp/docker.sock"
 ENV GOPATH="/go"
 ENV GOBIN="/go/bin"
+ENV TZ="Asia/Bangkok"
 
 # Install minimal dependencies
 RUN apk update && apk upgrade \
   && apk add --no-cache bash curl wget tar git \
     nss-tools ca-certificates \
+    tzdata \
+  && ln -sf /usr/share/zoneinfo/Asia/Bangkok /etc/localtime \
   # Install Forego
   && wget --quiet "https://github.com/jwilder/forego/releases/download/v${FOREGO_VERSION}/forego" \
   && mv ./forego /usr/bin/forego \
