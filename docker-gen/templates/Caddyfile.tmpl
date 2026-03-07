@@ -114,6 +114,7 @@
   # CORS Configuration - เปิดใช้งานเฉพาะเมื่อระบุ
   {{ $corsEnabled := trim (index $c.Labels "virtual.cors.enabled") }}
   {{ $isCorsEnabled := eq $corsEnabled "true" }}
+  # DEBUG: corsEnabled = [{{ $corsEnabled }}], isCorsEnabled = [{{ $isCorsEnabled }}]
   {{ if $isCorsEnabled }}# CORS: Enabled{{ end }}
 
   encode zstd gzip
@@ -230,14 +231,6 @@
     header_up X-User-Roles {http.auth.user.roles}
     header_up X-Real-IP {remote_host}
     header_up X-Tlen-IP {remote_host}
-    {{ if $isCorsEnabled }}
-    # Add CORS headers to backend response
-    header_down Access-Control-Allow-Origin "*"
-    header_down Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-    header_down Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-    header_down Access-Control-Expose-Headers "X-User-Sub, X-User-Email, X-User-Roles"
-    header_down Access-Control-Allow-Credentials "true"
-    {{ end }}
     {{ if $isCorsEnabled }}
     # Add CORS headers to backend response
     header_down Access-Control-Allow-Origin "*"
