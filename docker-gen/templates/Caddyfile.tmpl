@@ -277,6 +277,7 @@
   }
   {{ end }}
 
+  # ===== FORWARD CLAIMS + REVERSE PROXY =====
   reverse_proxy {{ $proxyMatcher }} {
     lb_policy {{ $proxyLBPolicy }}
     {{ $proxyDirectives }}
@@ -287,6 +288,12 @@
     to {{ $net.IP }}:{{ $port }}
     header_up X-Real-IP {remote_host}
     header_up X-Tlen-IP {remote_host}
+    # Add CORS headers to backend response
+    header_down Access-Control-Allow-Origin "*"
+    header_down Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    header_down Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+    header_down Access-Control-Expose-Headers "X-User-Sub, X-User-Email, X-User-Roles"
+    header_down Access-Control-Allow-Credentials "true"
     {{ end }}
     {{ end }}
   }

@@ -1,0 +1,40 @@
+version: "3.8"
+
+services:
+  keycloak-proxy:
+    image: caddy:2-alpine
+    container_name: keycloak-cors-proxy
+    labels:
+      - "virtual.host=sso.shopsthai.com"
+      - "virtual.port=80"
+      - "virtual.tls=internal"
+      - "virtual.proxy.matcher=/realms/*"
+      - "virtual.proxy.directives=lb_policy round_robin"
+    volumes:
+      - ./Caddyfile.keycloak:/etc/caddy/Caddyfile
+    networks:
+      - caddy-network
+    depends_on:
+      - keycloak
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: keycloak-server
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KC_HOSTNAME=sso.shopsthai.com
+      - KC_HOSTNAME_PORT=8080
+      - KC_HOSTNAME_STRICT=false
+      - KC_HOSTNAME_STRICT_HTTPS=false
+      - KC_HTTP_ENABLED=true
+      - KC_PROXY=edge
+    command: ["start-dev"]
+    ports:
+      - "8080:8080"
+    networks:
+      - caddy-network
+
+networks:
+  caddy-network:
+    external: true
