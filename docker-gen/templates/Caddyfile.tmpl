@@ -133,6 +133,19 @@
     }
     respond "" 204
   }
+
+  # เพิ่ม handle สำหรับ OPTIONS ที่จับทุก path ก่อน JWT auth
+  @options method OPTIONS
+  handle @options {
+    header {
+      Access-Control-Allow-Origin "*"
+      Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+      Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+      Access-Control-Max-Age "86400"
+      Access-Control-Allow-Credentials "true"
+    }
+    respond "" 204
+  }
   
   header {
     Access-Control-Allow-Origin "*"
