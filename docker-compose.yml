@@ -28,6 +28,8 @@ services:
       - "virtual.ratelimit.window=1m"
       # Debug Mode - ถ้าต้องการดู log รายละเอียด ให้เปิดบรรทัดนี้
       - "virtual.debug=true"
+      # CORS - เปิดใช้งาน CORS สำหรับ API
+      - "virtual.cors.enabled=true"
     env_file:
       - ./api/.env
     environment:
