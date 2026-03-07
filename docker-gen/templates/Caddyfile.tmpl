@@ -113,6 +113,27 @@
 
   encode zstd gzip
   
+  # ===== CORS CONFIGURATION =====
+  @cors_preflight method OPTIONS
+  handle @cors_preflight {
+    header {
+      Access-Control-Allow-Origin "*"
+      Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+      Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+      Access-Control-Max-Age "86400"
+      Access-Control-Allow-Credentials "true"
+    }
+    respond "" 204
+  }
+  
+  header {
+    Access-Control-Allow-Origin "*"
+    Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+    Access-Control-Expose-Headers "X-User-Sub, X-User-Email, X-User-Roles"
+    Access-Control-Allow-Credentials "true"
+  }
+  
   {{ if $tlsOn }}
   # โหมด HTTPS → ลบ fingerprint + ใส่ HSTS
   header {
@@ -125,11 +146,6 @@
     X-Frame-Options "SAMEORIGIN"
     Referrer-Policy "same-origin"
     Permissions-Policy "geolocation=()"
-    Access-Control-Allow-Origin "*"
-    Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-    Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-    Access-Control-Expose-Headers "X-User-Sub, X-User-Email, X-User-Roles"
-    Access-Control-Allow-Credentials "true"
   }
   {{ else }}
   # โหมด HTTP ธรรมดา → ลบ fingerprint อย่างเดียว
@@ -142,11 +158,6 @@
     X-Frame-Options "SAMEORIGIN"
     Referrer-Policy "same-origin"
     Permissions-Policy "geolocation=()"
-    Access-Control-Allow-Origin "*"
-    Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-    Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-    Access-Control-Expose-Headers "X-User-Sub, X-User-Email, X-User-Roles"
-    Access-Control-Allow-Credentials "true"
   }
   {{ end }}
 
@@ -197,19 +208,6 @@
   {{ end }}
 
   # ===== FORWARD CLAIMS + REVERSE PROXY =====
-  # ===== CORS CONFIGURATION (MOVED HERE TO HANDLE AFTER AUTH) =====
-  @cors_preflight method OPTIONS
-  handle @cors_preflight {
-    header {
-      Access-Control-Allow-Origin "*"
-      Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-      Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-      Access-Control-Max-Age "86400"
-      Access-Control-Allow-Credentials "true"
-    }
-    respond "" 204
-  }
-  
   reverse_proxy {{ $proxyMatcher }} {
     lb_policy {{ $proxyLBPolicy }}
     {{ $proxyDirectives }}
@@ -277,7 +275,6 @@
   }
   {{ end }}
 
-  # ===== FORWARD CLAIMS + REVERSE PROXY =====
   reverse_proxy {{ $proxyMatcher }} {
     lb_policy {{ $proxyLBPolicy }}
     {{ $proxyDirectives }}
