@@ -94,10 +94,6 @@
 {{ if not $logLevelSet }}{{ $logLevel = "ERROR" }}{{ end }}
 {{ if $isDebug }}{{ $logLevel = "DEBUG" }}{{ end }}
 
-# CORS Configuration - เปิดใช้งานเฉพาะเมื่อระบุ
-{{ $corsEnabled := trim (index $c.Labels "virtual.cors.enabled") }}
-{{ $isCorsEnabled := eq $corsEnabled "true" }}
-
 {{ if $aliasPresent  }}
 {{ if $tlsOff }}http://{{ end }}{{ $alias }} {
   redir {{ if $tlsOff }}http://{{ else }}https://{{ end }}{{ $host }}
@@ -114,6 +110,10 @@
   {{ if $rateLimitEnabled }}# Rate Limit: {{ $rateLimitZone }} ({{ $rateLimitEvents }}/{{ $rateLimitWindow }}){{ end }}
   {{ if $jwtRole }}# Required Roles: {{ $jwtRole }}{{ end }}
   {{ if $isDebug }}# DEBUG MODE: Enabled{{ end }}
+  
+  # CORS Configuration - เปิดใช้งานเฉพาะเมื่อระบุ
+  {{ $corsEnabled := trim (index $c.Labels "virtual.cors.enabled") }}
+  {{ $isCorsEnabled := eq $corsEnabled "true" }}
   {{ if $isCorsEnabled }}# CORS: Enabled{{ end }}
 
   encode zstd gzip
