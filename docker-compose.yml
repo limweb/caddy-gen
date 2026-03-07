@@ -17,9 +17,9 @@ services:
       - "auth.server=sso.shopsthai.com"
       - "auth.realm=shopthai.app"
       # Keycloak Client ID (สำหรับ resource_access.{client_id}.roles)
-      - "auth.clientid=shopthai-api"
+      # - "auth.clientid=shopsthai-api"  # ไม่ใช้เพราะ token ไม่มี resource_access สำหรับ client นี้
       # Role check - ถ้า token ไม่มี role ใดๆ ที่ระบุ จะ return 403
-      - "auth.roles=admin,manager"
+      - "auth.roles=admin"
       # - "auth.roles=admin" # Role เดียว
       # - "auth.roles=admin,manager,ops" # 3 roles
       # Rate Limit

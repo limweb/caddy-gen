@@ -144,7 +144,8 @@
   {{ if $hostImport }}import {{ $hostImport }}{{ end }}
 
   # ===== HEALTH CHECK FOR LOAD BALANCER =====
-  handle /health {
+  @health path /health
+  handle @health {
     respond "OK" 200
   }
 
