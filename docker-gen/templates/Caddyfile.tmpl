@@ -1,16 +1,13 @@
 {
-	# Global Options 123
-	# Updated: 2026-03-09
+	# Global Options
 	auto_https disable_redirects
 	log {
 		format json
 		level ERROR
 	}
-
-	servers {
+  servers {
 		trusted_proxies static 0.0.0.0/0
 	}
-
 	order jwtauth before basicauth
 }
 
@@ -235,57 +232,51 @@
   {{ end }}
 
   {{ if $jwtEnabled }}
-  # ===== JWT AUTH BLOCK =====
-  jwtauth {
-    jwk_url {{ $jwtJwks }}
-    sign_alg RS256
-    from_query access_token token
-    from_header Authorization X-Api-Token
-    from_cookies jwt_session user_session
-    issuer_whitelist {{ $jwtIssuer }}
-    {{ if $jwtAudience }}audience_whitelist {{ $jwtAudience }} account {{ end }}
-    import user_claims_config
-  }
-
-  # ===== ROLE CHECK (API-side) =====
-  # Role check is enforced by the backend API via X-User-Roles header
-
-  # ===== RATE LIMIT =====
-  {{ if $rateLimitEnabled }}
-  rate_limit {
-    zone {{ $rateLimitZone }} {
-      key {{ $rateLimitKey }}
-      events {{ $rateLimitEvents }}
-      window {{ $rateLimitWindow }}
+  # 3. Protected Routes (ต้องผ่าน JWT) - หุ้มทุกอย่างที่ต้องป้องกันไว้ในนี้
+  handle {
+    # --- JWT Auth ---
+    jwtauth {
+      jwk_url {{ $jwtJwks }}
+      sign_alg RS256
+      from_query access_token token
+      from_header Authorization X-Api-Token
+      from_cookies jwt_session user_session
+      issuer_whitelist {{ $jwtIssuer }}
+      {{ if $jwtAudience }}audience_whitelist {{ $jwtAudience }} account {{ end }}
+      import user_claims_config
     }
-  }
-  {{ end }}
 
-  # ===== FORWARD CLAIMS + REVERSE PROXY =====
-  reverse_proxy {{ $proxyMatcher }} {
-    lb_policy {{ $proxyLBPolicy }}
-    {{ $proxyDirectives }}
-    {{ if $proxyImport }}import {{ $proxyImport }}{{ end }}
-    {{ range $i, $container := $containers }}
-    {{ range $j, $net := $container.Networks }}
-    {{ $port := or (trim (index $container.Labels "virtual.port")) "80" }}
-    to {{ $net.IP }}:{{ $port }}
-    header_up Host {{ $host }}
-    import user_headers_to_backend
-    import proxy_headers
-        {{ end }}
+    # ===== RATE LIMIT =====
+    {{ if $rateLimitEnabled }}
+    rate_limit {
+      zone {{ $rateLimitZone }} {
+        key {{ $rateLimitKey }}
+        events {{ $rateLimitEvents }}
+        window {{ $rateLimitWindow }}
+      }
+    }
     {{ end }}
+
+    # --- Reverse Proxy ---
+    reverse_proxy {{ $proxyMatcher }} {
+      lb_policy {{ $proxyLBPolicy }}
+      {{ $proxyDirectives }}
+      {{ if $proxyImport }}import {{ $proxyImport }}{{ end }}
+      {{ range $i, $container := $containers }}
+      {{ range $j, $net := $container.Networks }}
+      {{ $port := or (trim (index $container.Labels "virtual.port")) "80" }}
+      to {{ $net.IP }}:{{ $port }}
+      header_up Host {{ $host }}
+      import user_headers_to_backend
+      import proxy_headers
+        {{ end }}
+      {{ end }}
+    }
+    # --- Security Headers (ใช้เฉพาะเส้นทางที่ต้องป้องกัน) ---
+    import security_headers_with_cors
+    # --- Block Sensitive Files ---
+    import block-sensitive-files
   }
-
-  # --- Security Headers (ใช้เฉพาะเส้นทางที่ต้องป้องกัน) ---
-  {{ if $isCorsEnabled }}
-  import security_headers_with_cors
-  {{ else }}
-  import security_headers
-  {{ end }}
-
-  # --- Block Sensitive Files ---
-  import block-sensitive-files
   {{ else if $basicauth }}
   # ===== BASIC AUTH BLOCK =====
   basicauth {{ $authPath }} {
