@@ -13,8 +13,8 @@
 	order jwtauth before basicauth
 }
 
+# === Snippet สำหรับ Health Check ===
 (health_check) {
-  # === Snippet สำหรับ Health Check ===
   @health path /health
   handle @health {
     respond "OK" 200
