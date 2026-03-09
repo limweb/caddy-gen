@@ -1,0 +1,185 @@
+{
+	# Global Options
+	auto_https disable_redirects
+	log {
+		format json
+		level ERROR
+	}
+  servers {
+		trusted_proxies static 0.0.0.0/0
+	}
+	order jwtauth before basicauth
+}
+
+# === Snippet สำหรับ Health Check ===
+(health_check) {
+  @health path /health
+  handle @health {
+    respond "OK" 200
+  }
+}
+
+(cors_preflight) {
+  # CORS Preflight (ต้องมาก่อนเสมอ เพื่อตอบ 204 ทันที)
+  @cors_preflight method OPTIONS
+  handle @cors_preflight {
+    header {
+      Access-Control-Allow-Origin "*"
+      Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+      Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+      Access-Control-Max-Age "86400"
+      Access-Control-Allow-Credentials "true"
+    }
+    respond "" 204
+  }
+}
+
+(security_headers) {
+  # Security Headers
+  header {
+    -Server
+    -X-Powered-By
+    -Link
+    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    X-XSS-Protection "1; mode=block"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "SAMEORIGIN"
+    Referrer-Policy "same-origin"
+    Permissions-Policy "geolocation=()"
+  }
+}
+
+(security_headers_with_cors) {
+  # Security Headers with CORS
+  header {
+    -Server
+    -X-Powered-By
+    -Link
+    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    X-XSS-Protection "1; mode=block"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "SAMEORIGIN"
+    Referrer-Policy "same-origin"
+    Permissions-Policy "geolocation=()"
+    # CORS Headers สำหรับคำตอบปกติ
+    Access-Control-Allow-Origin "*"
+    Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+    Access-Control-Expose-Headers "X-User-Sub, X-User-Email, X-User-Roles"
+    Access-Control-Allow-Credentials "true"
+  }
+}
+
+(proxy_headers) {
+  # Common Proxy Headers
+  header_up X-Real-IP {remote_host}
+  header_up X-Tlen-IP {remote_host}
+}
+
+(block-sensitive-files) {
+  # Block Sensitive Files
+  @blocked {
+    path *.md *.mdown .htaccess .git .gitignore .env /.git* /.git/* /configs/* /vendor/* /config/* /cronjob/*
+  }
+  respond @blocked 403
+}
+
+(user_claims_config) {
+  # 👤 User ID หลัก: ใช้ 'sub' (UUID) เป็นหลัก
+  user_claims sub id uid user_id username login
+  # 📦 ข้อมูลเสริม: แมปจาก Claim → ชื่อตัวแปรใน Caddy
+  # 📦 ข้อมูลเสริม (ชื่อหลัง -> ต้องตรงกับ header_up)
+  meta_claims "email->user_email" "preferred_username->user_username" "name->user_full_name"  \ 
+  "given_name->user_first_name" "family_name->user_last_name" "realm_access.roles->user_roles" \
+  "allowed-origins->user_allowed_origins" "resource_access.account.roles->account_roles"
+}
+
+(user_headers_to_backend) {
+  # 📤 ส่งค่าไป Backend ผ่าน Header
+  # User ID
+  header_up X-User-Id {http.auth.user.id}
+  # ข้อมูลส่วนตัว
+  # ✅ แก้ชื่อ placeholder ให้ตรงกับ meta_claims
+  header_up X-User-Id {http.auth.user.id}
+  header_up X-User-Email {http.auth.user.user_email}
+  header_up X-Username {http.auth.user.user_username}       
+  header_up X-Full-Name {http.auth.user.user_full_name}     
+  header_up X-First-Name {http.auth.user.user_first_name}   
+  header_up X-Last-Name {http.auth.user.user_last_name}     
+  # Allowed Origins (อาจเป็น JSON array string)
+  header_up X-User-Allowed-Origins {http.auth.user.user_allowed_origins}
+  # Roles (อาจเป็น JSON array string)
+  header_up X-User-Account-Roles {http.auth.user.account_roles}
+  header_up X-User-Roles {http.auth.user.user_roles}
+  # 🔐 Security: ลบ Authorization header ออกก่อนส่งต่อ (ไม่จำเป็นให้ Backend เห็น)
+  header_up -Authorization
+}
+
+api.shopsthai.com {
+  import health_check  # <--- เรียกใช้โค้ดจาก Snippet ด้านบน
+  tls internal
+  encode zstd gzip
+
+  import cors_preflight
+
+  # 3. Protected Routes (ต้องผ่าน JWT) - หุ้มทุกอย่างที่ต้องป้องกันไว้ในนี้
+  handle {
+    # --- JWT Auth ---
+    jwtauth {
+      jwk_url https://sso.shopsthai.com/realms/shopsthai.app/protocol/openid-connect/certs
+      # ⚠️ ถ้า RS256 และต้องการ JWK:
+      sign_alg RS256
+      from_query access_token token
+      from_header Authorization X-Api-Token
+		  from_cookies jwt_session user_session
+      # 🎯 ตรวจสอบ Issuer (สำคัญ!)
+      issuer_whitelist https://sso.shopsthai.com/realms/shopsthai.app
+      # 🎯 ตรวจสอบ Audience
+      audience_whitelist shopsthai.app account
+      import user_claims_config
+    }
+
+    # --- Reverse Proxy ---
+     reverse_proxy 172.18.0.4:3000 {
+       lb_policy round_robin
+       header_up Host api.shopsthai.com
+       import user_headers_to_backend
+       import proxy_headers
+     }
+    # --- Security Headers (ใช้เฉพาะเส้นทางที่ต้องป้องกัน) ---
+    import security_headers_with_cors
+    # --- Block Sensitive Files ---
+    import block-sensitive-files
+  }
+
+  # Logging
+  log {
+    output stdout
+    level INFO
+    format json
+  }
+}
+sso.shopsthai.com {
+    import health_check # นำเข้า Snippet Health Check (เพื่อให้ใช้โค้ดชุดเดียวกับ api)   
+    tls internal
+    encode zstd gzip
+
+    import security_headers
+
+    # Block Sensitive Files
+    import block-sensitive-files
+
+    # Reverse Proxy ไปยัง Keycloak
+    reverse_proxy 172.18.0.6:8080 {
+        lb_policy round_robin
+        import proxy_headers
+    }
+
+    # Logging
+    log {
+        output stdout
+        level INFO
+    }
+}
+:2015
+metrics
