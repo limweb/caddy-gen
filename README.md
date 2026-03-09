@@ -288,3 +288,6 @@ Full changelog is available [here](https://github.com/wemake-services/caddy-gen/
 ## License
 
 MIT. See [LICENSE](https://github.com/wemake-services/caddy-gen/blob/master/LICENSE) for more details.
+
+
+docker run -it --rm -v ${PWD}:/srv -v /var/run/docker.sock:/tmp/docker.sock:ro limweb/caddy2-gen bash

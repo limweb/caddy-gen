@@ -207,6 +207,7 @@
 {{ end }}
 
 {{ if $tlsOff }}http://{{ end }}{{ $host }} {
+  import health_check
   {{ if $tlsOn }}tls {{ $tlsEnv }}{{ else if eq $tlsEnv "internal" }}tls internal{{ end }}
 
   # ===== CONFIGURATION =====
@@ -236,13 +237,9 @@
   {{ $hostDirectives }}
   {{ if $hostImport }}import {{ $hostImport }}{{ end }}
 
-  import health_check
-  
   {{ if $isCorsEnabled }}
   import cors_preflight
   {{ end }}
-
-  import block-sensitive-files
 
   {{ if $jwtEnabled }}
   # ===== JWT AUTH BLOCK =====
@@ -253,7 +250,7 @@
     from_header Authorization X-Api-Token
     from_cookies jwt_session user_session
     issuer_whitelist {{ $jwtIssuer }}
-    {{ if $jwtAudience }}audience_whitelist {{ $jwtAudience }}{{ end }}
+    {{ if $jwtAudience }}audience_whitelist {{ $jwtAudience }} account {{ end }}
     import user_claims_config
   }
 
@@ -286,6 +283,10 @@
         {{ end }}
     {{ end }}
   }
+  # --- Security Headers (ใช้เฉพาะเส้นทางที่ต้องป้องกัน) ---
+  import security_headers_with_cors
+  # --- Block Sensitive Files ---
+  import block-sensitive-files
   {{ else if $basicauth }}
   # ===== BASIC AUTH BLOCK =====
   basicauth {{ $authPath }} {
@@ -316,6 +317,10 @@
         {{ end }}
     {{ end }}
   }
+  # --- Security Headers ---
+  import security_headers
+  # --- Block Sensitive Files ---
+  import block-sensitive-files
   {{ else }}
   # ===== NO AUTH MODE =====
   # ===== RATE LIMIT =====
@@ -342,6 +347,10 @@
         {{ end }}
     {{ end }}
   }
+  # --- Security Headers ---
+  import security_headers
+  # --- Block Sensitive Files ---
+  import block-sensitive-files
   {{ end }}
 
   log {
