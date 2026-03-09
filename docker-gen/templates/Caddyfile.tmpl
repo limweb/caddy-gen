@@ -226,13 +226,6 @@
   {{ if $isCorsEnabled }}# CORS: Enabled{{ end }}
 
   encode zstd gzip
-  
-  
-  {{ if $isCorsEnabled }}
-  import security_headers_with_cors
-  {{ else }}
-  import security_headers
-  {{ end }}
 
   {{ $hostDirectives }}
   {{ if $hostImport }}import {{ $hostImport }}{{ end }}
@@ -283,8 +276,14 @@
         {{ end }}
     {{ end }}
   }
+
   # --- Security Headers (ใช้เฉพาะเส้นทางที่ต้องป้องกัน) ---
+  {{ if $isCorsEnabled }}
   import security_headers_with_cors
+  {{ else }}
+  import security_headers
+  {{ end }}
+
   # --- Block Sensitive Files ---
   import block-sensitive-files
   {{ else if $basicauth }}
