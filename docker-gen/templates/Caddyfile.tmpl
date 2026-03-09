@@ -115,7 +115,6 @@
   header_up -Authorization
 }
 
-
 {{ $hosts := groupByLabel $ "virtual.host" }}
 
 {{ if not $hosts }}
