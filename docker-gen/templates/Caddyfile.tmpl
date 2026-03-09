@@ -28,7 +28,7 @@
       Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
       Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
       Access-Control-Max-Age "86400"
-      Access-Control-Allow-Credentials "true"
+      # Access-Control-Allow-Credentials "true"      
     }
     respond "" 204
   }
@@ -66,7 +66,7 @@
     Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
     Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
     Access-Control-Expose-Headers "X-User-Sub, X-User-Email, X-User-Roles"
-    Access-Control-Allow-Credentials "true"
+    #Access-Control-Allow-Credentials "true"
   }
 }
 
@@ -96,10 +96,6 @@
 
 (user_headers_to_backend) {
   # 📤 ส่งค่าไป Backend ผ่าน Header
-  # User ID
-  header_up X-User-Id {http.auth.user.id}
-  # ข้อมูลส่วนตัว
-  # ✅ แก้ชื่อ placeholder ให้ตรงกับ meta_claims
   header_up X-User-Id {http.auth.user.id}
   header_up X-User-Email {http.auth.user.user_email}
   header_up X-Username {http.auth.user.user_username}       
@@ -123,6 +119,7 @@
   log {
       output stdout
   }
+  metrics
 }
 
 {{ else }}
@@ -204,7 +201,7 @@
 
 {{ if $tlsOff }}http://{{ end }}{{ $host }} {
   import health_check
-  {{ if $tlsOn }}tls {{ $tlsEnv }}{{ else if eq $tlsEnv "internal" }}tls internal{{ end }}
+  {{ if $tlsOn }}tls {{ $tlsEnv }}{{ end }}
 
   # ===== CONFIGURATION =====
   # Host: {{ $host }}
@@ -217,8 +214,8 @@
   # CORS Configuration - เปิดใช้งานเฉพาะเมื่อระบุ
   {{ $corsEnabled := trim (index $c.Labels "virtual.cors.enabled") }}
   {{ $isCorsEnabled := eq $corsEnabled "true" }}
-  # DEBUG: corsEnabled = [{{ $corsEnabled }}], isCorsEnabled = [{{ $isCorsEnabled }}]
-  # DEBUG: All labels = [{{ range $k, $v := $c.Labels }}{{ $k }}={{ $v }} {{ end }}]
+  {{ if $isDebug }}# DEBUG: corsEnabled = [{{ $corsEnabled }}], isCorsEnabled = [{{ $isCorsEnabled }}]
+  # DEBUG: All labels = [{{ range $k, $v := $c.Labels }}{{ $k }}={{ $v }} {{ end }}]{{ end }}
   {{ if $isCorsEnabled }}# CORS: Enabled{{ end }}
 
   encode zstd gzip
@@ -265,11 +262,11 @@
       {{ range $j, $net := $container.Networks }}
       {{ $port := or (trim (index $container.Labels "virtual.port")) "80" }}
       to {{ $net.IP }}:{{ $port }}
+        {{ end }}
+      {{ end }}
       header_up Host {{ $host }}
       import user_headers_to_backend
       import proxy_headers
-        {{ end }}
-      {{ end }}
     }
     # --- Security Headers (ใช้เฉพาะเส้นทางที่ต้องป้องกัน) ---
     import security_headers_with_cors
@@ -301,10 +298,10 @@
     {{ range $j, $net := $container.Networks }}
     {{ $port := or (trim (index $container.Labels "virtual.port")) "80" }}
     to {{ $net.IP }}:{{ $port }}
+      {{ end }}
+    {{ end }}
     header_up Host {{ $host }}
     import proxy_headers
-        {{ end }}
-    {{ end }}
   }
   # --- Security Headers ---
   import security_headers
@@ -331,10 +328,10 @@
     {{ range $j, $net := $container.Networks }}
     {{ $port := or (trim (index $container.Labels "virtual.port")) "80" }}
     to {{ $net.IP }}:{{ $port }}
+      {{ end }}
+    {{ end }}
     header_up Host {{ $host }}
     import proxy_headers
-        {{ end }}
-    {{ end }}
   }
   # --- Security Headers ---
   import security_headers
@@ -350,8 +347,8 @@
 {{ end }}
 {{ end }}
 
+:2015 {
+  metrics
+}
+
 {{ end }}
-
-:2015
-
-metrics
