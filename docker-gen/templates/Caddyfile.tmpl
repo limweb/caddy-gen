@@ -1,5 +1,6 @@
 {
-	# Global Options
+	# Global Options 123
+	# Updated: 2026-03-09
 	auto_https disable_redirects
 	log {
 		format json
@@ -13,8 +14,8 @@
 	order jwtauth before basicauth
 }
 
-# === Snippet สำหรับ Health Check ===
 (health_check) {
+  # === Snippet สำหรับ Health Check ===
   @health path /health
   handle @health {
     respond "OK" 200
